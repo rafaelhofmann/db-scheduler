@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.TimeZone;
 
+import static com.github.kagkarlsson.scheduler.StringUtils.truncate;
+
 public class MssqlJdbcCustomization implements JdbcCustomization {
 
     @Override
@@ -56,11 +58,42 @@ public class MssqlJdbcCustomization implements JdbcCustomization {
 
     @Override
     public boolean supportsLockAndFetch() {
-        return false;
+        return true;
     }
 
     @Override
     public List<Execution> lockAndFetch(JdbcTaskRepositoryContext ctx, Instant now, int limit) {
-        throw new UnsupportedOperationException("lockAndFetch not supported for " + this.getClass().getName());
+        final JdbcTaskRepository.UnresolvedFilter unresolvedFilter = new JdbcTaskRepository.UnresolvedFilter(ctx.taskResolver.getUnresolved());
+
+        String selectForUpdateQuery =
+            " UPDATE " + ctx.tableName + " WITH (READPAST) " +
+                " SET " + ctx.tableName + ".picked = ?, " +
+                "     " + ctx.tableName + ".picked_by = ?, " +
+                "     " + ctx.tableName + ".last_heartbeat = ?, " +
+                "     " + ctx.tableName + ".version = " + ctx.tableName + ".version + 1 " +
+                " OUTPUT [inserted].* " +
+                " FROM ( " +
+                "   SELECT TOP(?) ist2.task_name, ist2.task_instance " +
+                "   FROM " + ctx.tableName + " ist2 " +
+                "   WHERE ist2.picked = ? AND ist2.execution_time <= ? " + unresolvedFilter.andCondition() +
+                "   ORDER BY ist2.execution_time ASC " +
+                " ) AS st2 " +
+                " WHERE st2.task_name = " + ctx.tableName + ".task_name " +
+                "   AND st2.task_instance = " + ctx.tableName + ".task_instance";
+
+        return ctx.jdbcRunner.query(selectForUpdateQuery,
+            ps -> {
+                int index = 1;
+                // Update
+                ps.setBoolean(index++, true); // picked (new)
+                ps.setString(index++, truncate(ctx.schedulerName.getName(), 50)); // picked_by
+                setInstant(ps, index++, now); // last_heartbeat
+                // Inner select
+                ps.setInt(index++, limit); // limit
+                ps.setBoolean(index++, false); // picked (old)
+                setInstant(ps, index++, now); // execution_time
+                unresolvedFilter.setParameters(ps, index);
+            },
+            ctx.resultSetMapper.get());
     }
 }

@@ -214,7 +214,7 @@ Fetched executions are already locked/picked for this scheduler-instance thus sa
 (i.e. keep threads busy), set to for example `1.0, 4.0`. Currently hearbeats are not updated for picked executions
 in queue (applicable if `upperLimitFractionOfThreads > 1.0`). If they stay there for more than
 `4 * hearbeat-interval` (default `20m`), not starting execution, they will be detected as _dead_ and likely be
-unlocked again (determined by `DeadExecutionHandler`).  Currently supported by **postgres**.
+unlocked again (determined by `DeadExecutionHandler`).  Currently supported by **postgres** and **mssql**.
 
 
 #### Less commonly tuned
@@ -506,7 +506,7 @@ Observations for these tests:
   * seem to consistently handle 10k executions/s for these configurations
   * throughput did not scale with postgres instance-size (4-8 core), so bottleneck is somewhere else
 
-Currently, polling strategy `lock-and-fetch` is implemented only for Postgres. Contributions adding support for more databases are welcome.
+Currently, polling strategy `lock-and-fetch` is implemented only for Postgres and MSSQL. Contributions adding support for more databases are welcome.
 
 ### User testimonial
 
