@@ -66,7 +66,7 @@ public class MssqlJdbcCustomization implements JdbcCustomization {
         final JdbcTaskRepository.UnresolvedFilter unresolvedFilter = new JdbcTaskRepository.UnresolvedFilter(ctx.taskResolver.getUnresolved());
 
         String selectForUpdateQuery =
-            " UPDATE " + ctx.tableName + " WITH (READPAST) " +
+            " UPDATE " + ctx.tableName +
                 " SET " + ctx.tableName + ".picked = ?, " +
                 "     " + ctx.tableName + ".picked_by = ?, " +
                 "     " + ctx.tableName + ".last_heartbeat = ?, " +
@@ -74,7 +74,7 @@ public class MssqlJdbcCustomization implements JdbcCustomization {
                 " OUTPUT [inserted].* " +
                 " FROM ( " +
                 "   SELECT TOP(?) ist2.task_name, ist2.task_instance " +
-                "   FROM " + ctx.tableName + " ist2 " +
+                "   FROM " + ctx.tableName + " ist2 WITH (ROWLOCK, READPAST, INDEX(fetch_lock_idx)) " +
                 "   WHERE ist2.picked = ? AND ist2.execution_time <= ? " + unresolvedFilter.andCondition() +
                 "   ORDER BY ist2.execution_time ASC " +
                 " ) AS st2 " +

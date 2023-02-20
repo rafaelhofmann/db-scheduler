@@ -12,5 +12,6 @@ create table scheduled_tasks (
   [version] BIGINT not null,
   PRIMARY KEY (task_name, task_instance),
   INDEX execution_time_idx (execution_time),
-  INDEX last_heartbeat_idx (last_heartbeat)
+  INDEX last_heartbeat_idx (last_heartbeat),
+  INDEX fetch_lock_idx (task_name, task_instance)
 )
